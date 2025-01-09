@@ -47,6 +47,11 @@
       height: 100%;
       object-fit: cover;
     }
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
     button {
       padding: 10px 20px;
       font-size: 16px;
@@ -75,6 +80,11 @@
     </div>
   </div>
 
+  <div class="controls">
+    <button id="muteAudio">Mute Audio</button>
+    <button id="toggleVideo">Turn Off Video</button>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.0/simplepeer.min.js"></script>
   <script>
@@ -88,10 +98,16 @@
     const statusElement = document.getElementById("status");
     const localVideo = document.getElementById("localVideo");
     const remoteVideo = document.getElementById("remoteVideo");
+    const muteAudioButton = document.getElementById("muteAudio");
+    const toggleVideoButton = document.getElementById("toggleVideo");
   
     const peers = {};
+    let localStream;
+    let isAudioMuted = false;
+    let isVideoOff = false;
   
     navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
+      localStream = stream;
       localVideo.srcObject = stream;
       statusElement.textContent = "Connecting...";
       console.log("Local stream acquired. Joining room...");
@@ -126,6 +142,24 @@
       console.error("Error accessing media devices:", error);
       statusElement.textContent = "Failed to access media devices.";
     });
+
+    // Mute/Unmute audio functionality
+    muteAudioButton.addEventListener("click", () => {
+      if (localStream) {
+        isAudioMuted = !isAudioMuted;
+        localStream.getAudioTracks()[0].enabled = !isAudioMuted;
+        muteAudioButton.textContent = isAudioMuted ? "Unmute Audio" : "Mute Audio";
+      }
+    });
+
+    // Turn on/off video functionality
+    toggleVideoButton.addEventListener("click", () => {
+      if (localStream) {
+        isVideoOff = !isVideoOff;
+        localStream.getVideoTracks()[0].enabled = !isVideoOff;
+        toggleVideoButton.textContent = isVideoOff ? "Turn On Video" : "Turn Off Video";
+      }
+    });
   
     function connectToNewUser(userId, stream, initiator) {
       console.log(`Connecting to new user: ${userId}, initiator: ${initiator}`);
@@ -158,6 +192,5 @@
       peers[userId] = peer;
     }
   </script>
-   
 </body>
 </html>
