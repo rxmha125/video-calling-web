@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Calling App</title>
+</head>
+<body>
+  <h1>Welcome to the Video Calling App</h1>
+  <form action="/room/<%= Math.random().toString(36).substring(2, 7) %>">
+    <button type="submit">Create a Room</button>
+  </form>
+</body>
+</html>

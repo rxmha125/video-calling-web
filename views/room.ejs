@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Room - <%= roomId %></title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background-color: #f5f5f5;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    #status {
+      margin-bottom: 20px;
+      font-size: 16px;
+      color: #333;
+    }
+    .video-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      width: 90%;
+      max-width: 800px;
+    }
+    .video-box {
+      position: relative;
+      flex: 1 1 45%;
+      max-width: 45%;
+      height: 200px;
+      background-color: black;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .video-box video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Room: <%= roomId %></h1>
+  <div id="status">Connecting...</div>
+  <button id="copyRoomLink" style="margin-bottom: 20px;">Copy Room Link</button>
+
+  <div class="video-container">
+    <div class="video-box" id="myVideoBox">
+      <video id="localVideo" autoplay muted></video>
+    </div>
+    <div class="video-box" id="remoteVideoBox">
+      <video id="remoteVideo" autoplay></video>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.0/simplepeer.min.js"></script>
+  <script>
+    document.getElementById("copyRoomLink").addEventListener("click", () => {
+      navigator.clipboard.writeText(window.location.href);
+      alert("Room link copied!");
+    });
+  
+    const socket = io("/");
+    const roomId = "<%= roomId %>";
+    const statusElement = document.getElementById("status");
+    const localVideo = document.getElementById("localVideo");
+    const remoteVideo = document.getElementById("remoteVideo");
+  
+    const peers = {};
+  
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
+      localVideo.srcObject = stream;
+      statusElement.textContent = "Connecting...";
+      console.log("Local stream acquired. Joining room...");
+      socket.emit("join-room", roomId, socket.id);
+  
+      // When a new user connects
+      socket.on("user-connected", (userId) => {
+        console.log(`User connected: ${userId}`);
+        connectToNewUser(userId, stream, true); // Initiator
+      });
+  
+      // When signaling data is received
+      socket.on("signal", ({ signal, userId }) => {
+        console.log(`Received signal from ${userId}`);
+        if (!peers[userId]) {
+          connectToNewUser(userId, stream, false); // Non-initiator
+        }
+        peers[userId].signal(signal);
+      });
+  
+      // When a user disconnects
+      socket.on("user-disconnected", (userId) => {
+        console.log(`User disconnected: ${userId}`);
+        if (peers[userId]) {
+          peers[userId].destroy();
+          delete peers[userId];
+        }
+        statusElement.textContent = "Connecting...";
+      });
+  
+    }).catch((error) => {
+      console.error("Error accessing media devices:", error);
+      statusElement.textContent = "Failed to access media devices.";
+    });
+  
+    function connectToNewUser(userId, stream, initiator) {
+      console.log(`Connecting to new user: ${userId}, initiator: ${initiator}`);
+      const peer = new SimplePeer({
+        initiator,
+        trickle: false,
+        stream,
+      });
+  
+      peer.on("signal", (signal) => {
+        console.log(`Sending signal to ${userId}`);
+        socket.emit("signal", { userId, signal });
+      });
+  
+      peer.on("stream", (remoteStream) => {
+        console.log(`Received remote stream from ${userId}`);
+        remoteVideo.srcObject = remoteStream;
+        statusElement.textContent = "Connected";
+      });
+  
+      peer.on("error", (err) => {
+        console.error(`Peer error with ${userId}:`, err);
+      });
+  
+      peer.on("close", () => {
+        console.log(`Peer connection with ${userId} closed`);
+        if (peers[userId]) delete peers[userId];
+      });
+  
+      peers[userId] = peer;
+    }
+  </script>
+   
+</body>
+</html>
