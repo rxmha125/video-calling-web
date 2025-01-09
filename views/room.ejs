@@ -111,7 +111,7 @@
       localVideo.srcObject = stream;
       statusElement.textContent = "Connecting...";
       console.log("Local stream acquired. Joining room...");
-      socket.emit("join-room", roomId, socket.id);
+      socket.emit("join-room", roomId);
   
       // When a new user connects
       socket.on("user-connected", (userId) => {

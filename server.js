@@ -30,11 +30,13 @@ app.get("/room/:roomId", (req, res) => {
 io.on("connection", (socket) => {
   console.log("New connection:", socket.id);
 
-  socket.on("join-room", (roomId, userId) => {
+  socket.on("join-room", (roomId) => {
+    const userId = socket.id;
     console.log(`${userId} joined room: ${roomId}`);
     socket.join(roomId);
     socket.to(roomId).emit("user-connected", userId);
-
+  });
+  
     socket.on("signal", ({ userId, signal }) => {
       console.log(`Signal from ${socket.id} to ${userId}`);
       io.to(userId).emit("signal", { signal, userId: socket.id });
@@ -45,6 +47,5 @@ io.on("connection", (socket) => {
       socket.to(roomId).emit("user-disconnected", userId);
     });
   });
-});
 
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
