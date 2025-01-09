@@ -1,4 +1,3 @@
-// server.js
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -32,20 +31,24 @@ io.on("connection", (socket) => {
 
   socket.on("join-room", (roomId) => {
     const userId = socket.id;
+    socket.roomId = roomId; // Store roomId in socket object
+    socket.userId = userId; // Store userId in socket object
     console.log(`${userId} joined room: ${roomId}`);
     socket.join(roomId);
     socket.to(roomId).emit("user-connected", userId);
   });
   
-    socket.on("signal", ({ userId, signal }) => {
-      console.log(`Signal from ${socket.id} to ${userId}`);
-      io.to(userId).emit("signal", { signal, userId: socket.id });
-    });
-
-    socket.on("disconnect", () => {
-      console.log(`User disconnected: ${socket.id}`);
-      socket.to(roomId).emit("user-disconnected", userId);
-    });
+  socket.on("signal", ({ userId, signal }) => {
+    console.log(`Signal from ${socket.id} to ${userId}`);
+    io.to(userId).emit("signal", { signal, userId: socket.id });
   });
+
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${socket.id}`);
+    if (socket.roomId && socket.userId) {
+      socket.to(socket.roomId).emit("user-disconnected", socket.userId); // Use socket.userId
+    }
+  });
+});
 
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
