@@ -1,54 +1,54 @@
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
-const path = require("path");
-const PORT = process.env.PORT || 3000;
-require("dotenv").config();
-
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*", // Adjust to your specific origin if needed
-    methods: ["GET", "POST"],
-  },
+const io = new Server(server);
+
+app.set('view engine', 'ejs');
+
+const rooms = new Set(); // Track active rooms
+
+app.get('/', (req, res) => {
+  res.render('index', { rooms: Array.from(rooms) });
 });
 
-app.set("view engine", "ejs");
-app.set("views", path.join(__dirname, "views"));
-app.use(express.static(path.join(__dirname, "public")));
-
-app.get("/", (req, res) => {
-  res.render("index");
+app.get('/room/:roomId', (req, res) => {
+  const roomId = req.params.roomId;
+  rooms.add(roomId); // Add room to the active list
+  res.render('room', { roomId });
 });
 
-app.get("/room/:roomId", (req, res) => {
-  res.render("room", { roomId: req.params.roomId });
-});
+// Serve static files
+app.use(express.static('public'));
 
-io.on("connection", (socket) => {
-  console.log("New connection:", socket.id);
-
-  socket.on("join-room", (roomId) => {
-    const userId = socket.id;
-    socket.roomId = roomId; // Store roomId in socket object
-    socket.userId = userId; // Store userId in socket object
-    console.log(`${userId} joined room: ${roomId}`);
+// Socket.IO connection
+io.on('connection', (socket) => {
+  socket.on('join-room', (roomId) => {
     socket.join(roomId);
-    socket.to(roomId).emit("user-connected", userId);
-  });
-  
-  socket.on("signal", ({ userId, signal }) => {
-    console.log(`Signal from ${socket.id} to ${userId}`);
-    io.to(userId).emit("signal", { signal, userId: socket.id });
+    console.log(`User joined room: ${roomId}`);
+
+    // Notify other users in the room
+    socket.to(roomId).emit('user-connected', socket.id);
+
+    // Handle disconnection
+    socket.on('disconnect', () => {
+      console.log(`User disconnected from room: ${roomId}`);
+      socket.to(roomId).emit('user-disconnected', socket.id);
+
+      // Clean up room if empty
+      const room = io.sockets.adapter.rooms.get(roomId);
+      if (!room || room.size === 0) {
+        rooms.delete(roomId);
+      }
+    });
   });
 
-  socket.on("disconnect", () => {
-    console.log(`User disconnected: ${socket.id}`);
-    if (socket.roomId && socket.userId) {
-      socket.to(socket.roomId).emit("user-disconnected", socket.userId); // Use socket.userId
-    }
+  socket.on('signal', ({ userId, signal }) => {
+    io.to(userId).emit('signal', { userId: socket.id, signal });
   });
 });
 
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(3000, () => {
+  console.log('Server running on http://localhost:3000');
+});

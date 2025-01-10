@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Room - <%= roomId %></title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -60,16 +61,23 @@
       background-color: #007bff;
       color: white;
       cursor: pointer;
+      transition: background-color 0.3s;
     }
     button:hover {
       background-color: #0056b3;
+    }
+    .end-call-button {
+      background-color: #dc3545; /* Red for the end call button */
+    }
+    .end-call-button:hover {
+      background-color: #b02a37;
     }
   </style>
 </head>
 <body>
   <h1>Room: <%= roomId %></h1>
   <div id="status">Connecting...</div>
-  <button id="copyRoomLink" style="margin-bottom: 20px;">Copy Room Link</button>
+  <button id="copyRoomLink" style="margin-bottom: 20px;"><i class="fa-regular fa-copy" style="color: #000000;"></i>  Copy Room Link</button>
 
   <div class="video-container">
     <div class="video-box" id="myVideoBox">
@@ -81,13 +89,32 @@
   </div>
 
   <div class="controls">
-    <button id="muteAudio">Mute Audio</button>
-    <button id="toggleVideo">Turn Off Video</button>
+    <button id="muteAudio"><i class="fa-solid fa-volume-xmark" style="color: #000000;"></i>  Mute Audio</button>
+    <button id="toggleVideo"><i class="fa-regular fa-eye-slash" style="color: #000000;"></i> Turn Off Video</button>
+    <button id="endCall" class="end-call-button"><i class="fa-solid fa-phone" style="color: #ff0033;"></i> End Call</button>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.0/simplepeer.min.js"></script>
   <script>
+    const endCallButton = document.getElementById("endCall");
+
+    // Handle "End Call" button click
+    endCallButton.addEventListener("click", () => {
+      // Stop local video stream
+      if (localVideo.srcObject) {
+        localVideo.srcObject.getTracks().forEach(track => track.stop());
+      }
+
+      // Stop remote video stream
+      if (remoteVideo.srcObject) {
+        remoteVideo.srcObject.getTracks().forEach(track => track.stop());
+      }
+
+      // Redirect user to the homepage
+      window.location.href = "/";
+    });
+
     document.getElementById("copyRoomLink").addEventListener("click", () => {
       navigator.clipboard.writeText(window.location.href);
       alert("Room link copied!");
